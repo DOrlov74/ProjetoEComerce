@@ -7,6 +7,7 @@ using Infrastrutura;
 using Infrastrutura.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
@@ -21,6 +22,17 @@ namespace WebMVC.Controllers
         public AccountController(ICustomerService db)
         {
             _db = db;
+        }
+        [Authorize(Roles = "Admin")]
+        public IActionResult AdminPage()
+        {
+            return View();
+        }
+        [Route("/logout")]
+        public IActionResult Logout()
+        {
+            HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme).ConfigureAwait(false);
+            return Redirect("/");
         }
         // GET: AccountController
         [Route("/login")]
@@ -69,13 +81,24 @@ namespace WebMVC.Controllers
             return View(model);
         }
         // GET: AccountController/Details/5
-        public ActionResult Details(int id)
+        [Route("/details")]
+        public ActionResult Details(Guid id)
         {
-            return View();
+            return View(_db.SelectCustomer());
+        }
+
+        public IActionResult Index()
+        {
+            if (HttpContext.User.IsInRole("Admin"))
+            {
+                return Redirect("Admin");
+            }
+            _db.SelectCustomer();
+            return Redirect("Details");
         }
 
         // GET: AccountController/Create
-        public ActionResult Create()
+        public ActionResult AddRole()
         {
             return View();
         }
@@ -83,15 +106,16 @@ namespace WebMVC.Controllers
         // POST: AccountController/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
+        public ActionResult AddRole(CustomerRole item)
         {
             try
             {
+                _db.AddCustomerRole(Guid.Empty, item.RoleName);
                 return RedirectToAction(nameof(Index));
             }
             catch
             {
-                return View();
+                return View(item);
             }
         }
 

@@ -26,9 +26,19 @@ namespace Infrastrutura.Services
                 }
             }
         }
+        
         public int AddCustomerRole(Guid id, string roleName)
         {
-            throw new NotImplementedException();
+            using (IDbConnection db = new SqlConnection(_connection))
+            {
+                Customer c= db.QueryFirstOrDefault<Customer>(" SELECT * FROM Customers WHERE UserName=@UN", new { UN = _user });
+                if (c != null)
+                {
+                    return db.Execute("INSERT INTO CustomerRoles VALUES (@CustomerId, @RoleName)", 
+                        new{CustomerId=c.CustomerId, RoleName=roleName});
+                }
+            }
+            return -1;
         }
 
         public int DelCustomerRole(Guid id, string roleName)
@@ -69,6 +79,17 @@ namespace Infrastrutura.Services
             }
         }
 
+        public Customer SelectCustomer()
+        {
+            using (IDbConnection db = new SqlConnection(_connection))
+            {
+                Customer c= db.QueryFirstOrDefault<Customer>(" SELECT * FROM Customers WHERE UserName=@UN", new { UN = _user });
+                c.CustomerRoles= db.Query<CustomerRole>(" SELECT * FROM CustomerRoles WHERE CustomerId=@CID", 
+                    new { CID = c.CustomerId }).ToList();
+                return c;
+            }
+        }
+
         private string CodificaPassword(string password)    //  nao usar MD5
         {
             //  AZURE KEY VAULT
@@ -97,7 +118,11 @@ namespace Infrastrutura.Services
 
         public ICollection<Customer> SelectCustomers()
         {
-            throw new NotImplementedException();
+            using (IDbConnection db = new SqlConnection(_connection))
+            {
+                var c = db.Query<Customer>("SELECT * FROM Customers ");
+                return c.ToList();
+            }
         }
 
         public int UpdateCustomer(Customer item)
